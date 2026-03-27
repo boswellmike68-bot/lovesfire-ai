@@ -1,0 +1,25 @@
+{
+  "name": "lovesfire-ai",
+  "version": "1.0.0",
+  "description": "Long-form text to multi-scene vertical video pipeline",
+  "main": "dist/api/http_server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/api/http_server.js",
+    "dev": "ts-node src/api/http_server.ts",
+    "test": "ts-node src/test/filter_builder.test.ts && ts-node src/test/scene_validator.test.ts && ts-node src/test/audio_reactive.test.ts && ts-node src/test/bbncc_engine.test.ts && ts-node src/test/audit_log.test.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
