@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
+// DEPLOYMENT PREREQUISITE: Ensure FFmpeg is installed and accessible in the hosting environment for audio generation.
+
 let cachedPath: string | null = null;
 
 export function getFFmpegPath(): string {
