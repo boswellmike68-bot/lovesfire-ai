@@ -6,7 +6,65 @@ import { getAuditStore } from '../reflection/audit_log';
 import { AuditEventType } from '../reflection/audit_store';
 
 const app = express();
+
+// CORS middleware for local Bozaboard frontend
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 app.use(express.json({ limit: '1mb' }));
+
+// ---- POST /advisory — BBnCC Governance Response (text only, no video) ----
+
+app.post('/advisory', (req, res) => {
+  try {
+    const { input } = req.body;
+
+    if (!input || typeof input !== 'string' || input.trim().length === 0) {
+      res.status(400).json({ error: 'Request body must include a non-empty "input" string.' });
+      return;
+    }
+
+    // Run through BBnCC governance pipeline (intake + alignment only, no video)
+    const result = bbnccEngine.process(input);
+
+    if (!result.success || !result.manifest) {
+      const status = result.rejectedAt === 'validation' ? 400 : 403;
+      res.status(status).json({
+        success: false,
+        error: result.rejectionReason,
+        rejectedAt: result.rejectedAt,
+        validationErrors: result.validation?.errors ?? [],
+      });
+      return;
+    }
+
+    // Return governance metadata + scene descriptions as advisory text
+    const scenes = result.manifest.scenes || [];
+    const advisoryText = scenes.map((s, i) => 
+      `Scene ${i + 1}: ${s.description || '(no description)'}`
+    ).join('\n');
+
+    res.status(200).json({
+      success: true,
+      message: advisoryText || 'Advisory processed.',
+      governanceStamp: result.manifest.lineage.governanceStamp,
+      specVersion: result.manifest.lineage.specVersion,
+      sceneCount: scenes.length,
+      warnings: result.validation?.warnings ?? [],
+    });
+  } catch (err: any) {
+    console.error('[advisory] Error:', err?.message || err);
+    res.status(500).json({ error: err?.message || 'Internal server error' });
+  }
+});
 
 // ---- POST /render — BBnCC Pipeline → GovernedQueue ----
 

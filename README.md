@@ -169,3 +169,9 @@ npm test
 ```
 
 42 tests across 3 suites: filter builder (16), scene validator (11), audio reactive (15).
+
+## Contact
+
+For questions, contributions, or technical support, please contact:
+
+- **Mike** – bossbozitive@outlook.com
