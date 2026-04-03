@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/api/http_server.js",
     "dev": "ts-node src/api/http_server.ts",
+    "dev:monetized": "ts-node src/api/http_server_monetized.ts",
     "test": "ts-node src/test/filter_builder.test.ts && ts-node src/test/scene_validator.test.ts && ts-node src/test/audio_reactive.test.ts && ts-node src/test/bbncc_engine.test.ts && ts-node src/test/audit_log.test.ts"
   },
   "dependencies": {
