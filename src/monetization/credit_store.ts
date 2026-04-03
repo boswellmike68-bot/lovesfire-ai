@@ -40,8 +40,13 @@ export interface Transaction {
 export class CreditStore {
   private db: Database.Database;
 
-  constructor(dbPath: string = path.join(process.cwd(), 'data', 'credits.db')) {
-    this.db = new Database(dbPath);
+  constructor(dbPath?: string) {
+    // Use Railway volume path in production, local data/ in development
+    const defaultPath = process.env.NODE_ENV === 'production'
+      ? '/app/data/credits.db'
+      : path.join(process.cwd(), 'data', 'credits.db');
+    
+    this.db = new Database(dbPath || defaultPath);
     this.initSchema();
   }
 

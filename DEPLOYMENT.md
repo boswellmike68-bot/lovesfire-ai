@@ -4,6 +4,21 @@ Deploy your BBAI/CCAI governance system with programmable revenue to production.
 
 ---
 
+## ⚠️ CRITICAL: Persistent Storage Setup
+
+**Your SQLite databases MUST be on a persistent volume or users will lose credits on server restart.**
+
+Railway's file system is ephemeral by default. Follow these steps **immediately after creating your project**:
+
+1. In Railway dashboard → **"New"** → **"Volume"**
+2. Name it: `lovesfire-data`
+3. Mount path: `/app/data`
+4. Attach to your service
+
+**Without this, your `credits.db` and `audit.db` will be deleted on every deploy.** ⚠️
+
+---
+
 ## 🎯 Quick Deploy to Railway
 
 ### Step 1: Push to GitHub (Already Done ✅)
@@ -34,11 +49,14 @@ VIDEO_BACKEND=mock
 ### Step 4: Deploy
 
 Railway will automatically:
+- Install FFmpeg (via `nixpacks.toml`)
 - Run `npm install && npm run build`
 - Start `node dist/api/http_server_monetized.js`
 - Assign a public URL (e.g., `lovesfire-ai-production.up.railway.app`)
 
 **Your API is now live!** 🎉
+
+**Note:** The `nixpacks.toml` file ensures FFmpeg is installed for video rendering. Without it, renders will fail.
 
 ---
 

@@ -73,19 +73,23 @@ export interface RenderStat {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_DB_DIR = path.join(process.env.APPDATA || process.env.HOME || '.', 'lovesfire-ai');
-const DEFAULT_DB_PATH = path.join(DEFAULT_DB_DIR, 'audit.db');
 
 export class AuditStore {
   private db: Database.Database;
 
-  constructor(dbPath: string = DEFAULT_DB_PATH) {
+  constructor(dbPath?: string) {
+    // Use Railway volume path in production, local data/ in development
+    const defaultPath = process.env.NODE_ENV === 'production'
+      ? '/app/data/audit.db'
+      : path.join(process.cwd(), 'data', 'audit.db');
+    
     // Ensure directory exists
-    const dir = path.dirname(dbPath);
+    const dir = path.dirname(defaultPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    this.db = new Database(dbPath);
+    this.db = new Database(dbPath || defaultPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
     this.migrate();
