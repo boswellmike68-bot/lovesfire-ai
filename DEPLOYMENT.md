@@ -1,44 +1,44 @@
-# 🚀 Production Deployment Guide - LovesfireAI
+# Production Deployment Guide - LovesfireAI
 
 Deploy your BBAI/CCAI governance system with programmable revenue to production.
 
 ---
 
-## ⚠️ CRITICAL: Persistent Storage Setup
+## CRITICAL: Persistent Storage Setup
 
 **Your SQLite databases MUST be on a persistent volume or users will lose credits on server restart.**
 
-Railway's file system is ephemeral by default. Follow these steps **immediately after creating your project**:
+Most container hosts use ephemeral file systems by default. Configure persistent storage **immediately after creating your project**:
 
-1. In Railway dashboard → **"New"** → **"Volume"**
+1. Create a persistent volume on your deployment platform.
 2. Name it: `lovesfire-data`
-3. Mount path: `/app/data`
-4. Attach to your service
+3. Set the `DATA_DIR` environment variable to the volume mount path.
+4. Attach the volume to your service.
 
-**Without this, your `credits.db` and `audit.db` will be deleted on every deploy.** ⚠️
+**Without this, your `credits.db` and `audit.db` will be deleted on every deploy.**
 
 ---
 
-## 🎯 Quick Deploy to Railway
+## Quick Deploy
 
-### Step 1: Push to GitHub (Already Done ✅)
+### Step 1: Push to GitHub (Already Done)
 Your code is live at: https://github.com/boswellmike68-bot/lovesfire-ai
 
-### Step 2: Create Railway Project
+### Step 2: Create Project on Your Container Host
 
-1. Go to: https://railway.app
-2. Click **"New Project"**
-3. Select **"Deploy from GitHub repo"**
-4. Choose: `boswellmike68-bot/lovesfire-ai`
-5. Railway will auto-detect Node.js and use `railway.json` config
+1. Sign in to your deployment platform.
+2. Create a new project.
+3. Connect your GitHub repo: `boswellmike68-bot/lovesfire-ai`
+4. The platform should auto-detect Node.js.
 
 ### Step 3: Set Environment Variables
 
-In Railway dashboard, go to **Variables** tab and add:
+In your deployment platform's dashboard, add:
 
 ```bash
 PORT=3000
 NODE_ENV=production
+DATA_DIR=/data
 CORS_ORIGIN=https://your-frontend-domain.com
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -48,25 +48,25 @@ VIDEO_BACKEND=mock
 
 ### Step 4: Deploy
 
-Railway will automatically:
-- Install FFmpeg (via `nixpacks.toml`)
+The deployment platform will:
+- Install dependencies and FFmpeg (ensure FFmpeg is available in your runtime environment)
 - Run `npm install && npm run build`
 - Start `node dist/api/http_server_monetized.js`
-- Assign a public URL (e.g., `lovesfire-ai-production.up.railway.app`)
+- Assign a public URL
 
-**Your API is now live!** 🎉
+**Your API is now live!**
 
-**Note:** The `nixpacks.toml` file ensures FFmpeg is installed for video rendering. Without it, renders will fail.
+**Note:** FFmpeg must be available in the runtime environment for video rendering. Configure your container or build system to include it.
 
 ---
 
-## 🔐 Get Your Stripe Keys
+## Get Your Stripe Keys
 
 ### Test Mode (for staging)
 1. Go to: https://dashboard.stripe.com/test/apikeys
 2. Copy **Secret key** → `STRIPE_SECRET_KEY`
 3. Go to: https://dashboard.stripe.com/test/webhooks
-4. Create endpoint: `https://your-railway-url.up.railway.app/webhook/stripe`
+4. Create endpoint: `https://YOUR_PRODUCTION_URL/webhook/stripe`
 5. Select event: `payment_intent.succeeded`
 6. Copy **Signing secret** → `STRIPE_WEBHOOK_SECRET`
 
@@ -77,27 +77,27 @@ Railway will automatically:
 
 ---
 
-## 📊 Post-Deployment Checklist
+## Post-Deployment Checklist
 
 ### Test Your Deployment
 
 ```bash
 # 1. Health check
-curl https://your-railway-url.up.railway.app/pricing
+curl https://YOUR_PRODUCTION_URL/pricing
 
 # 2. Create API key
-curl -X POST "https://your-railway-url.up.railway.app/api-keys" \
+curl -X POST "https://YOUR_PRODUCTION_URL/api-keys" \
   -H "Content-Type: application/json" \
   -d '{"userId":"test@example.com","initialCredits":10}'
 
 # 3. Test advisory (should work)
-curl -X POST "https://your-railway-url.up.railway.app/advisory" \
+curl -X POST "https://YOUR_PRODUCTION_URL/advisory" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"input":"Scene 1\nVisual: Test.\nDuration: 5s"}'
 
 # 4. Check admin revenue
-curl "https://your-railway-url.up.railway.app/admin/revenue" \
+curl "https://YOUR_PRODUCTION_URL/admin/revenue" \
   -H "x-admin-key: your-admin-key"
 ```
 
@@ -106,17 +106,17 @@ curl "https://your-railway-url.up.railway.app/admin/revenue" \
 1. In Stripe dashboard, go to **Webhooks**
 2. Click **"Send test webhook"**
 3. Select `payment_intent.succeeded`
-4. Check Railway logs for: `[Stripe] Added X credits to...`
+4. Check server logs for: `[Stripe] Added X credits to...`
 
 ---
 
-## 💰 Connect to Frontend
+## Connect to Frontend
 
 Update your Bozaboard or frontend to use the production API:
 
 ```javascript
 // config.js
-export const API_URL = 'https://your-railway-url.up.railway.app';
+export const API_URL = 'https://YOUR_PRODUCTION_URL';
 
 // Create payment intent
 const response = await fetch(`${API_URL}/credits/purchase`, {
@@ -139,9 +139,9 @@ await stripe.confirmCardPayment(clientSecret, {
 
 ---
 
-## 🔄 Continuous Deployment
+## Continuous Deployment
 
-Railway auto-deploys on every push to `main`:
+Configure your deployment platform to auto-deploy on every push to `main`:
 
 ```bash
 # Make changes locally
@@ -149,7 +149,7 @@ git add .
 git commit -m "Update pricing tiers"
 git push origin main
 
-# Railway automatically:
+# The deployment platform automatically:
 # 1. Pulls latest code
 # 2. Runs npm install && npm run build
 # 3. Restarts server with zero downtime
@@ -157,16 +157,16 @@ git push origin main
 
 ---
 
-## 📈 Monitoring & Logs
+## Monitoring & Logs
 
-### Railway Dashboard
+### Platform Dashboard
 - **Metrics:** CPU, memory, request count
 - **Logs:** Real-time server logs
 - **Deployments:** History of all deploys
 
 ### Check Revenue
 ```bash
-curl "https://your-railway-url.up.railway.app/admin/revenue" \
+curl "https://YOUR_PRODUCTION_URL/admin/revenue" \
   -H "x-admin-key: your-admin-key"
 ```
 
@@ -182,21 +182,21 @@ curl "https://your-railway-url.up.railway.app/admin/revenue" \
 
 ---
 
-## 🗄️ Database Persistence
+## Database Persistence
 
-Railway provides **persistent volumes** for SQLite:
+Configure a **persistent volume** on your deployment platform for SQLite:
 - `data/credits.db` - Credit balances and transactions
 - `data/audit.db` - Governance audit logs
 
-**Backups:** Railway auto-backs up volumes daily.
+**Backups:** Enable automatic backups on your persistent volume.
 
 ---
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Server won't start
 ```bash
-# Check Railway logs for errors
+# Check server logs for errors
 # Common issues:
 # - Missing environment variables
 # - TypeScript build errors
@@ -208,19 +208,19 @@ Railway provides **persistent volumes** for SQLite:
 # 1. Verify webhook URL is correct
 # 2. Check STRIPE_WEBHOOK_SECRET matches Stripe dashboard
 # 3. Test with "Send test webhook" in Stripe
-# 4. Check Railway logs for [Stripe] messages
+# 4. Check server logs for [Stripe] messages
 ```
 
 ### Database not persisting
 ```bash
-# Railway needs a volume mounted at /data
-# Check Railway dashboard → Settings → Volumes
-# Should show: /data (persistent)
+# Ensure DATA_DIR env var points to a persistent volume
+# Check your deployment platform's volume settings
+# The volume should be mounted at the DATA_DIR path
 ```
 
 ---
 
-## 💡 Production Optimizations
+## Production Optimizations
 
 ### Add Rate Limiting
 ```bash
@@ -263,20 +263,20 @@ app.get('/health', (req, res) => {
 
 ---
 
-## 🌍 Custom Domain
+## Custom Domain
 
-### Railway
-1. Go to **Settings** → **Domains**
-2. Click **"Generate Domain"** or **"Custom Domain"**
-3. Add CNAME record: `api.yourdomain.com` → `your-app.up.railway.app`
-4. Update `CORS_ORIGIN` to match
+### Setup
+1. Go to your deployment platform's **Domains** settings.
+2. Add a custom domain or generate a platform domain.
+3. Add CNAME record: `api.yourdomain.com` → your platform-assigned URL.
+4. Update `CORS_ORIGIN` to match.
 
 ### SSL Certificate
-Railway auto-provisions SSL certificates via Let's Encrypt.
+Most deployment platforms auto-provision SSL certificates via Let's Encrypt.
 
 ---
 
-## 💳 Stripe Production Checklist
+## Stripe Production Checklist
 
 - [ ] Activate Stripe account (verify business details)
 - [ ] Switch to live mode keys
@@ -288,29 +288,29 @@ Railway auto-provisions SSL certificates via Let's Encrypt.
 
 ---
 
-## 📊 Revenue Tracking
+## Revenue Tracking
 
 ### Daily Revenue Check
 ```bash
-# Add to cron job or Railway scheduled task
-curl "https://your-railway-url.up.railway.app/admin/revenue" \
+# Add to cron job or scheduled task
+curl "https://YOUR_PRODUCTION_URL/admin/revenue" \
   -H "x-admin-key: your-admin-key" \
   | jq '.estimatedRevenue.usd'
 ```
 
 ### Top Users
 ```bash
-curl "https://your-railway-url.up.railway.app/admin/keys" \
+curl "https://YOUR_PRODUCTION_URL/admin/keys" \
   -H "x-admin-key: your-admin-key" \
   | jq 'sort_by(.credits) | reverse | .[0:5]'
 ```
 
 ---
 
-## 🎯 Launch Checklist
+## Launch Checklist
 
 - [x] Code pushed to GitHub
-- [x] Railway project created
+- [ ] Deployment project created on container host
 - [ ] Environment variables set
 - [ ] Stripe keys configured (test mode)
 - [ ] Webhook endpoint created
@@ -323,7 +323,7 @@ curl "https://your-railway-url.up.railway.app/admin/keys" \
 
 ---
 
-## 🚀 You're Live!
+## You're Live!
 
 Your LovesfireAI API with programmable revenue is now:
 - ✅ Deployed to production
@@ -335,9 +335,8 @@ Your LovesfireAI API with programmable revenue is now:
 
 ---
 
-## 📞 Support
+## Support
 
-- **Railway Docs:** https://docs.railway.app
 - **Stripe Docs:** https://stripe.com/docs
 - **GitHub Issues:** https://github.com/boswellmike68-bot/lovesfire-ai/issues
 - **Email:** bossbozitive@outlook.com

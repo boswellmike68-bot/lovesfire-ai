@@ -49,7 +49,7 @@ For sponsorship inquiries, partnership discussions, or billing questions, please
 
 For payment processing, Stripe account management, and banking-related queries:
 
-- **boswellmike68@gmail.com** – Stripe and financial account holder
+- **bossbozitive@outlook.com** – Public contact (financial email stored in environment variables only)
 
 ## Acknowledgments
 

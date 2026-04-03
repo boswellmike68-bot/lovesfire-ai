@@ -213,7 +213,8 @@ npm start                # production (after npm run build)
 | `STRIPE_WEBHOOK_SECRET` | — | Stripe webhook signing secret |
 | `ADMIN_KEY` | — | Admin endpoint authentication key |
 | `CORS_ORIGIN` | `http://localhost:8080` | Allowed CORS origin |
-| `NODE_ENV` | `development` | `production` uses `/app/data/` for SQLite |
+| `NODE_ENV` | `development` | `production` uses `DATA_DIR` for SQLite |
+| `DATA_DIR` | `./data` | Persistent volume mount path for SQLite databases |
 
 ---
 
@@ -223,10 +224,10 @@ Run after every deploy to verify core monetization flows:
 
 ```bash
 # PowerShell
-.\scripts\smoke-test.ps1 -BaseUrl "https://your-app.up.railway.app"
+.\scripts\smoke-test.ps1 -BaseUrl "https://YOUR_PRODUCTION_URL"
 
 # Bash / CI
-bash scripts/smoke-test.sh https://your-app.up.railway.app
+bash scripts/smoke-test.sh https://YOUR_PRODUCTION_URL
 ```
 
 Tests cover: key creation, balance check, advisory deduction, render queueing, zero-credit rejection (402), invalid key (401), missing auth (401).
@@ -252,14 +253,14 @@ Before going live, verify every item:
 - [ ] Insufficient credits returns 402 with clear error message
 
 ### Data Protection
-- [ ] SQLite databases (`credits.db`, `audit.db`) are on a persistent Railway volume
+- [ ] SQLite databases (`credits.db`, `audit.db`) are on a persistent volume (`DATA_DIR`)
 - [ ] Database files are in `.gitignore` (`*.db`, `*.db-wal`, `*.db-shm`)
 - [ ] Credit deduction happens BEFORE processing (prevents compute theft)
 - [ ] Transaction log records every credit change with timestamp
 
 ### Network & Transport
 - [ ] `CORS_ORIGIN` is set to the exact frontend domain (not `*`)
-- [ ] Railway provides automatic SSL/TLS via Let's Encrypt
+- [ ] Deployment platform provides automatic SSL/TLS via Let's Encrypt
 - [ ] Stripe webhook endpoint accepts only `POST` with raw body
 
 ### Rate Limiting & Abuse (Recommended)
@@ -279,7 +280,7 @@ Before going live, verify every item:
 - [ ] Verify Stripe test webhook fires correctly
 - [ ] Confirm zero-credit key cannot render (HTTP 402)
 - [ ] Confirm invalid key cannot access credits (HTTP 401)
-- [ ] Check Railway logs for `[Nixpacks] Installing ffmpeg`
+- [ ] Check server logs to confirm FFmpeg is installed
 - [ ] Verify `/admin/revenue` returns correct totals
 
 ---
@@ -292,7 +293,7 @@ GitHub Actions runs on every push to `main`:
 2. **Unit Tests** — all test suites
 3. **Smoke Tests** — starts server, runs full monetization flow
 
-Railway auto-deploys from `main` after CI passes.
+The deployment platform auto-deploys from `main` after CI passes.
 
 ---
 

@@ -34,7 +34,7 @@ npm run dev:monetized
 
 ```powershell
 $body = @{
-    userId = "mike@bozitive.com"
+    userId = "steward@example.com"
     initialCredits = 100
 } | ConvertTo-Json
 
@@ -46,7 +46,7 @@ Invoke-RestMethod -Method Post -Uri http://localhost:3000/api-keys `
 ```json
 {
   "apiKey": "lf_abc123def456...",
-  "userId": "mike@bozitive.com",
+  "userId": "steward@example.com",
   "credits": 100,
   "message": "API key created successfully"
 }

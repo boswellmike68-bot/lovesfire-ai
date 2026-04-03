@@ -29,7 +29,7 @@ Body: {"userId":"dry-run-test","initialCredits":10}
 **Response:**
 ```json
 {
-  "apiKey": "lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27",
+  "apiKey": "lf_<REDACTED_TEST_KEY_1>",
   "userId": "dry-run-test",
   "credits": 10,
   "message": "API key created successfully"
@@ -43,13 +43,13 @@ Body: {"userId":"dry-run-test","initialCredits":10}
 ### 3. Initial Balance Check ✅
 ```powershell
 GET /credits
-Authorization: Bearer lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27
+Authorization: Bearer lf_<REDACTED_TEST_KEY_1>
 ```
 
 **Response:**
 ```json
 {
-  "apiKey": "lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27",
+  "apiKey": "lf_<REDACTED_TEST_KEY_1>",
   "userId": "dry-run-test",
   "balance": 10,
   "recentTransactions": []
@@ -63,7 +63,7 @@ Authorization: Bearer lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27
 ### 4. Advisory Call (1 Credit Deduction) ✅
 ```powershell
 POST /advisory
-Authorization: Bearer lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27
+Authorization: Bearer lf_<REDACTED_TEST_KEY_1>
 Body: {"input":"Scene 1\nVisual: Test advisory request.\nDuration: 5s"}
 ```
 
@@ -92,19 +92,19 @@ Body: {"input":"Scene 1\nVisual: Test advisory request.\nDuration: 5s"}
 ### 5. Post-Advisory Balance Verification ✅
 ```powershell
 GET /credits
-Authorization: Bearer lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27
+Authorization: Bearer lf_<REDACTED_TEST_KEY_1>
 ```
 
 **Response:**
 ```json
 {
-  "apiKey": "lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27",
+  "apiKey": "lf_<REDACTED_TEST_KEY_1>",
   "userId": "dry-run-test",
   "balance": 9,
   "recentTransactions": [
     {
       "id": 1,
-      "apiKey": "lf_f5c02712598d6a49bd112ea356277b4256c6a7c283e9ed27",
+      "apiKey": "lf_<REDACTED_TEST_KEY_1>",
       "amount": -1,
       "type": "advisory",
       "createdAt": "2026-04-03T06:52:00.000Z"
@@ -129,7 +129,7 @@ Body: {"userId":"zero-test","initialCredits":0}
 **Response:**
 ```json
 {
-  "apiKey": "lf_a5712ce71ce18a81117705296a9d8f2faee3e87f9c42214c",
+  "apiKey": "lf_<REDACTED_TEST_KEY_2>",
   "userId": "zero-test",
   "credits": 0,
   "message": "API key created successfully"
@@ -143,7 +143,7 @@ Body: {"userId":"zero-test","initialCredits":0}
 ### 7. Zero-Credit Render Rejection ✅
 ```powershell
 POST /render
-Authorization: Bearer lf_a5712ce71ce18a81117705296a9d8f2faee3e87f9c42214c
+Authorization: Bearer lf_<REDACTED_TEST_KEY_2>
 Body: {"script":"Scene 1\nVisual: Cinematic test scene.\nDuration: 10s"}
 ```
 

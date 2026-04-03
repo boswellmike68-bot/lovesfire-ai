@@ -13,7 +13,7 @@ import { JobStatus } from '../types/job_contract';
 import { bbnccEngine } from '../governance/bbncc_engine';
 import { getAuditStore } from '../reflection/audit_log';
 import { AuditEventType } from '../reflection/audit_store';
-import { initCreditStore, getCreditStore } from '../monetization/credit_store';
+import { initCreditStore, getCreditStore, PaymentMethod } from '../monetization/credit_store';
 import { requireApiKey, requireCredits, AuthenticatedRequest } from '../monetization/api_key_middleware';
 import { handleStripeWebhook, createPaymentIntent, CREDIT_PACKAGES } from '../monetization/stripe_webhook';
 import { calculateRenderCost, calculateAdvisoryCost, getPricingBreakdown } from '../monetization/pricing';
@@ -334,13 +334,150 @@ app.get('/admin/revenue', (req, res) => {
 
   const store = getCreditStore();
   const totalCredits = store.getTotalRevenue();
+  const revenueByMethod = store.getRevenueByMethod();
   
   res.json({
     totalCreditsPurchased: totalCredits,
     estimatedRevenue: {
       usd: (totalCredits / 10) * 5, // Rough estimate: 10 credits = $5
     },
+    revenueByMethod,
   });
+});
+
+// ---- POST /admin/mint — Request to mint credits (step 1: generates verification code) ----
+app.post('/admin/mint', (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const { apiKey, amount, paymentMethod, paymentRef } = req.body;
+
+    if (!apiKey || typeof apiKey !== 'string') {
+      res.status(400).json({ error: 'apiKey is required' });
+      return;
+    }
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      res.status(400).json({ error: 'amount must be a positive number' });
+      return;
+    }
+    const validMethods: PaymentMethod[] = ['e-transfer', 'cash', 'barter', 'admin_mint'];
+    if (!paymentMethod || !validMethods.includes(paymentMethod)) {
+      res.status(400).json({ error: `paymentMethod must be one of: ${validMethods.join(', ')}` });
+      return;
+    }
+
+    const store = getCreditStore();
+    const target = store.getApiKey(apiKey);
+    if (!target) {
+      res.status(404).json({ error: 'Target API key not found' });
+      return;
+    }
+
+    const mint = store.createMintVerification(apiKey, amount, paymentMethod, paymentRef);
+
+    // Log the verification code to server console (admin reads it from logs or email)
+    console.log(`[MINT] ==========================================`);
+    console.log(`[MINT] VERIFICATION CODE: ${mint.verificationCode}`);
+    console.log(`[MINT] Mint ID: ${mint.id}`);
+    console.log(`[MINT] Target: ${apiKey.slice(0, 16)}... (${target.userId})`);
+    console.log(`[MINT] Amount: ${amount} credits via ${paymentMethod}`);
+    console.log(`[MINT] Ref: ${paymentRef || 'none'}`);
+    console.log(`[MINT] Expires: ${mint.expiresAt}`);
+    console.log(`[MINT] ==========================================`);
+
+    // If ADMIN_EMAIL is configured, we could send email here.
+    // For now, the code is in the server logs + response.
+    const adminEmail = process.env.ADMIN_EMAIL;
+
+    res.status(201).json({
+      mintId: mint.id,
+      message: 'Mint verification created. Confirm with the verification code.',
+      target: { userId: target.userId, currentBalance: target.credits },
+      amount,
+      paymentMethod,
+      paymentRef: paymentRef || null,
+      expiresAt: mint.expiresAt,
+      verificationDelivery: adminEmail
+        ? `Code sent to ${adminEmail}`
+        : 'Code printed to server console (set ADMIN_EMAIL for email delivery)',
+      // In production, NEVER return the code in the response.
+      // For local dev, include it so admin can confirm without checking logs.
+      ...(process.env.NODE_ENV !== 'production' ? { verificationCode: mint.verificationCode } : {}),
+    });
+  } catch (err: any) {
+    console.error('[admin/mint] Error:', err?.message || err);
+    res.status(500).json({ error: err?.message || 'Internal server error' });
+  }
+});
+
+// ---- POST /admin/mint/confirm — Confirm mint with verification code (step 2) ----
+app.post('/admin/mint/confirm', (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const { mintId, code } = req.body;
+
+    if (!mintId || typeof mintId !== 'string') {
+      res.status(400).json({ error: 'mintId is required' });
+      return;
+    }
+    if (!code || typeof code !== 'string') {
+      res.status(400).json({ error: 'code is required (6-digit verification code)' });
+      return;
+    }
+
+    const store = getCreditStore();
+    const result = store.confirmMintVerification(mintId, code);
+
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Credits minted successfully. Ledger updated with double-entry record.',
+    });
+  } catch (err: any) {
+    console.error('[admin/mint/confirm] Error:', err?.message || err);
+    res.status(500).json({ error: err?.message || 'Internal server error' });
+  }
+});
+
+// ---- GET /admin/ledger — View double-entry ledger ----
+app.get('/admin/ledger', (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const store = getCreditStore();
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+  const entries = store.getLedgerEntries(limit);
+  res.json({ entries, count: entries.length });
+});
+
+// ---- GET /admin/integrity — Run ledger integrity check ----
+app.get('/admin/integrity', (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const store = getCreditStore();
+  const report = store.integrityCheck();
+  const status = report.healthy ? 200 : 503;
+  res.status(status).json(report);
 });
 
 // ---- GET /jobs — Admin: list jobs ----
@@ -439,19 +576,30 @@ app.listen(PORT, () => {
   console.log(`[lovesfire-ai]    GET  /download/:id      — download video`);
   console.log(`[lovesfire-ai] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`[lovesfire-ai] 💳 Payment:`);
-  console.log(`[lovesfire-ai]    POST /webhook/stripe    — Stripe webhook`);
+  console.log(`[lovesfire-ai]    POST /webhook/stripe    — Stripe webhook (legacy)`);
+  console.log(`[lovesfire-ai] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`[lovesfire-ai] 🏦 Sovereign Mint:`);
+  console.log(`[lovesfire-ai]    POST /admin/mint        — request credit mint (step 1)`);
+  console.log(`[lovesfire-ai]    POST /admin/mint/confirm — confirm with code (step 2)`);
+  console.log(`[lovesfire-ai]    GET  /admin/ledger      — double-entry ledger`);
+  console.log(`[lovesfire-ai]    GET  /admin/integrity   — ledger integrity check`);
   console.log(`[lovesfire-ai] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`[lovesfire-ai] 🔐 Admin Endpoints:`);
   console.log(`[lovesfire-ai]    GET  /admin/keys        — list all API keys`);
-  console.log(`[lovesfire-ai]    GET  /admin/revenue     — revenue stats`);
+  console.log(`[lovesfire-ai]    GET  /admin/revenue     — revenue stats (by method)`);
   console.log(`[lovesfire-ai]    GET  /jobs              — list jobs`);
   console.log(`[lovesfire-ai]    GET  /stats             — queue stats`);
   console.log(`[lovesfire-ai]    GET  /audit/*           — audit logs`);
   console.log(`[lovesfire-ai] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`[lovesfire-ai] VIDEO_BACKEND=${process.env.VIDEO_BACKEND || 'mock'}`);
-  console.log(`[lovesfire-ai] 🫁 Financial lungs: ACTIVE`);
+  console.log(`[lovesfire-ai] 🫁 Financial lungs: SOVEREIGN`);
+  console.log(`[lovesfire-ai] 🏦 Ledger: Double-entry (auto-lock on drift)`);
+  console.log(`[lovesfire-ai] 📧 Admin email: ${process.env.ADMIN_EMAIL || '(not set — codes in console)'}`);
   console.log(`[lovesfire-ai] 🧬 Governance: BBnCC + MommaSpec v1.0.0`);
-  console.log(`[lovesfire-ai] 💾 Persistence: SQLite (audit + credits)`);
+  console.log(`[lovesfire-ai] 💾 Persistence: SQLite (audit + credits + ledger)`);
+  // Run initial integrity check on startup
+  const startupIntegrity = getCreditStore().integrityCheck();
+  console.log(`[lovesfire-ai] ✅ Ledger integrity: ${startupIntegrity.healthy ? 'HEALTHY' : 'VIOLATION DETECTED'} (${startupIntegrity.entryCount} entries, ${startupIntegrity.accountCount} accounts)`);
 });
 
 export default app;

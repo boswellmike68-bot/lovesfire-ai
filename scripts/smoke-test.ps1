@@ -1,6 +1,6 @@
 # LovesfireAI Smoke Test Script
 # Run after every deploy to verify core monetization flows
-# Usage: .\scripts\smoke-test.ps1 -BaseUrl "https://your-app.up.railway.app"
+# Usage: .\scripts\smoke-test.ps1 -BaseUrl "https://YOUR_PRODUCTION_URL"
 
 param(
     [string]$BaseUrl = "http://localhost:3000",

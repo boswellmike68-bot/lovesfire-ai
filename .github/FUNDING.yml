@@ -12,5 +12,5 @@ otechie: # Replace with a single Otechie username
 custom: # Replace with up to 4 custom sponsorship URLs
 
 # Stripe configuration
-# Financial contact for Stripe and banking verification:
-stripe_account_email: boswellmike68@gmail.com
+# Financial contact (set via environment variable, not committed):
+stripe_account_email: # Set STRIPE_ACCOUNT_EMAIL in .env (never commit)

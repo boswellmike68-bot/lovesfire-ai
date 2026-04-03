@@ -9,7 +9,12 @@
     "start:basic": "node dist/api/http_server.js",
     "dev": "ts-node src/api/http_server.ts",
     "dev:monetized": "ts-node src/api/http_server_monetized.ts",
-    "test": "ts-node src/test/filter_builder.test.ts && ts-node src/test/scene_validator.test.ts && ts-node src/test/audio_reactive.test.ts && ts-node src/test/bbncc_engine.test.ts && ts-node src/test/audit_log.test.ts"
+    "test": "ts-node src/test/filter_builder.test.ts && ts-node src/test/scene_validator.test.ts && ts-node src/test/audio_reactive.test.ts && ts-node src/test/bbncc_engine.test.ts && ts-node src/test/audit_log.test.ts",
+    "scan:exposures": "node scripts/security-scan.cjs",
+    "scan:emails": "node scripts/security-scan.cjs --mode emails",
+    "scan:secrets": "node scripts/security-scan.cjs --mode secrets",
+    "scan:env": "node scripts/security-scan.cjs --mode env",
+    "security:scan": "node scripts/security-scan.cjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",

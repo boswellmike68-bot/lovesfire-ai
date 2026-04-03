@@ -78,10 +78,9 @@ export class AuditStore {
   private db: Database.Database;
 
   constructor(dbPath?: string) {
-    // Use Railway volume path in production, local data/ in development
-    const defaultPath = process.env.NODE_ENV === 'production'
-      ? '/app/data/audit.db'
-      : path.join(process.cwd(), 'data', 'audit.db');
+    // Use DATA_DIR env var in production, local data/ in development
+    const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+    const defaultPath = path.join(dataDir, 'audit.db');
     
     // Ensure directory exists
     const dir = path.dirname(defaultPath);

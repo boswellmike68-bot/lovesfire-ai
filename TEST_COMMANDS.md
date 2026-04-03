@@ -9,7 +9,7 @@ Quick reference for testing the programmable revenue system.
 ### PowerShell
 ```powershell
 $body = @{
-    userId = "mike@bozitive.com"
+    userId = "steward@example.com"
     initialCredits = 10
 } | ConvertTo-Json
 
@@ -21,21 +21,21 @@ Invoke-RestMethod -Method Post -Uri http://localhost:3000/api-keys `
 ```bash
 curl -X POST "http://localhost:3000/api-keys" ^
   -H "Content-Type: application/json" ^
-  -d "{\"userId\":\"mike@bozitive.com\",\"initialCredits\":10}"
+  -d "{\"userId\":\"steward@example.com\",\"initialCredits\":10}"
 ```
 
 ### curl (Linux/Mac)
 ```bash
 curl -X POST "http://localhost:3000/api-keys" \
   -H "Content-Type: application/json" \
-  -d '{"userId":"mike@bozitive.com","initialCredits":10}'
+  -d '{"userId":"steward@example.com","initialCredits":10}'
 ```
 
 **Response:**
 ```json
 {
   "apiKey": "lf_abc123def456...",
-  "userId": "mike@bozitive.com",
+  "userId": "steward@example.com",
   "credits": 10,
   "message": "API key created successfully"
 }
@@ -64,7 +64,7 @@ curl -X GET "http://localhost:3000/credits" \
 ```json
 {
   "apiKey": "lf_abc123def456...",
-  "userId": "mike@bozitive.com",
+  "userId": "steward@example.com",
   "balance": 10,
   "recentTransactions": []
 }
@@ -249,7 +249,7 @@ curl -X GET "http://localhost:3000/admin/keys" \
 [
   {
     "key": "lf_abc123...",
-    "userId": "mike@bozitive.com",
+    "userId": "steward@example.com",
     "credits": 2,
     "createdAt": "2026-04-03T06:00:00.000Z",
     "lastUsedAt": "2026-04-03T06:30:00.000Z"
