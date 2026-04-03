@@ -1,0 +1,64 @@
+name: LovesfireAI CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run unit tests
+        run: |
+          mkdir -p data
+          npm test
+
+  smoke-test:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start server in background
+        run: |
+          mkdir -p data
+          NODE_ENV=test ADMIN_KEY=ci-admin-key node dist/api/http_server_monetized.js &
+          sleep 3
+
+      - name: Run smoke tests
+        run: bash scripts/smoke-test.sh http://localhost:3000
+
+      - name: Stop server
+        if: always()
+        run: kill %1 2>/dev/null || true
