@@ -170,8 +170,135 @@ npm test
 
 42 tests across 3 suites: filter builder (16), scene validator (11), audio reactive (15).
 
+---
+
+## Programmable Revenue (API Monetization)
+
+LovesfireAI includes a **credit-based API monetization** system. Every `/render` and `/advisory` call requires an API key with sufficient credits.
+
+### Monetized Endpoints
+
+| Endpoint | Auth | Cost | Description |
+|----------|------|------|-------------|
+| `POST /api-keys` | None | Free | Create API key |
+| `GET /credits` | Bearer | Free | Check balance |
+| `POST /credits/purchase` | Bearer | — | Buy credits via Stripe |
+| `GET /pricing` | None | Free | View pricing tiers |
+| `POST /advisory` | Bearer | 1 credit | Governance check (no video) |
+| `POST /render` | Bearer | 5+ credits | Queue video render |
+| `POST /webhook/stripe` | Stripe sig | — | Payment webhook |
+| `GET /admin/keys` | x-admin-key | — | List all API keys |
+| `GET /admin/revenue` | x-admin-key | — | Revenue stats |
+
+### Credit Packages
+
+| Package | Price | Credits |
+|---------|-------|---------|
+| Starter | $5 | 10 |
+| Pro | $25 | 60 |
+| Steward | $100 | 300 |
+
+### Run Monetized Server
+
+```bash
+npm run dev:monetized    # development
+npm start                # production (after npm run build)
+```
+
+### Additional Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `STRIPE_SECRET_KEY` | — | Stripe API secret key |
+| `STRIPE_WEBHOOK_SECRET` | — | Stripe webhook signing secret |
+| `ADMIN_KEY` | — | Admin endpoint authentication key |
+| `CORS_ORIGIN` | `http://localhost:8080` | Allowed CORS origin |
+| `NODE_ENV` | `development` | `production` uses `/app/data/` for SQLite |
+
+---
+
+## Smoke Tests
+
+Run after every deploy to verify core monetization flows:
+
+```bash
+# PowerShell
+.\scripts\smoke-test.ps1 -BaseUrl "https://your-app.up.railway.app"
+
+# Bash / CI
+bash scripts/smoke-test.sh https://your-app.up.railway.app
+```
+
+Tests cover: key creation, balance check, advisory deduction, render queueing, zero-credit rejection (402), invalid key (401), missing auth (401).
+
+---
+
+## Security Checklist
+
+Before going live, verify every item:
+
+### Secrets & Keys
+- [ ] `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are set via environment variables, never committed
+- [ ] `ADMIN_KEY` is a cryptographically random string (>= 32 characters)
+- [ ] `.env` is in `.gitignore` (confirmed)
+- [ ] No secrets appear in client-side code or localStorage (only user API keys)
+- [ ] API keys are prefixed `lf_` and generated with `crypto.randomBytes(24)`
+
+### Authentication & Authorization
+- [ ] All monetized endpoints require `Authorization: Bearer` header
+- [ ] Admin endpoints require `x-admin-key` header
+- [ ] Stripe webhooks verify signature via `stripe-signature` header
+- [ ] Invalid/missing auth returns 401 (not 403 or 500)
+- [ ] Insufficient credits returns 402 with clear error message
+
+### Data Protection
+- [ ] SQLite databases (`credits.db`, `audit.db`) are on a persistent Railway volume
+- [ ] Database files are in `.gitignore` (`*.db`, `*.db-wal`, `*.db-shm`)
+- [ ] Credit deduction happens BEFORE processing (prevents compute theft)
+- [ ] Transaction log records every credit change with timestamp
+
+### Network & Transport
+- [ ] `CORS_ORIGIN` is set to the exact frontend domain (not `*`)
+- [ ] Railway provides automatic SSL/TLS via Let's Encrypt
+- [ ] Stripe webhook endpoint accepts only `POST` with raw body
+
+### Rate Limiting & Abuse (Recommended)
+- [ ] Add `express-rate-limit` to `/api-keys` (prevent key farming)
+- [ ] Add `express-rate-limit` to `/render` (prevent queue flooding)
+- [ ] Monitor `/admin/revenue` for unusual credit patterns
+- [ ] Consider API key expiration for inactive keys
+
+### Governance Integrity
+- [ ] BBnCC engine rejects forbidden content regardless of credit balance
+- [ ] MommaSpec governance stamp is included in every response
+- [ ] Audit trail persists across server restarts
+- [ ] Birth certificates are immutable once created
+
+### Pre-Launch Verification
+- [ ] Run `scripts/smoke-test.sh` against production URL
+- [ ] Verify Stripe test webhook fires correctly
+- [ ] Confirm zero-credit key cannot render (HTTP 402)
+- [ ] Confirm invalid key cannot access credits (HTTP 401)
+- [ ] Check Railway logs for `[Nixpacks] Installing ffmpeg`
+- [ ] Verify `/admin/revenue` returns correct totals
+
+---
+
+## CI/CD
+
+GitHub Actions runs on every push to `main`:
+
+1. **Build** — `npm ci && npm run build`
+2. **Unit Tests** — all test suites
+3. **Smoke Tests** — starts server, runs full monetization flow
+
+Railway auto-deploys from `main` after CI passes.
+
+---
+
 ## Contact
 
 For questions, contributions, or technical support, please contact:
 
 - **Mike** – bossbozitive@outlook.com
+- **Sponsor** – https://github.com/sponsors/boswellmike68
