@@ -214,11 +214,23 @@ export class CreditStore {
     const key = `lf_${crypto.randomBytes(24).toString('hex')}`;
     const now = new Date().toISOString();
 
-    this.db.prepare(`
-      INSERT INTO api_keys (key, user_id, credits, created_at)
-      VALUES (?, ?, ?, ?)
-    `).run(key, userId, initialCredits, now);
+    const run = this.db.transaction(() => {
+      this.db.prepare(`
+        INSERT INTO api_keys (key, user_id, credits, created_at)
+        VALUES (?, ?, ?, ?)
+      `).run(key, userId, initialCredits, now);
 
+      // Write ledger entry for initial credits (Treasury → User)
+      if (initialCredits > 0) {
+        const userAccount = this.ensureUserAccount(key);
+        this.db.prepare(`
+          INSERT INTO ledger_entries (debit_account, credit_account, amount, description, payment_method, created_at, created_by)
+          VALUES (?, ?, ?, ?, 'admin_mint', ?, 'system')
+        `).run(TREASURY_ACCOUNT, userAccount, initialCredits, `Initial credits for new key (${userId})`, now);
+      }
+    });
+
+    run();
     console.log(`[CreditStore] Created API key for user ${userId} with ${initialCredits} credits`);
     return key;
   }
