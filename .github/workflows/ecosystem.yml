@@ -6,11 +6,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
-  validate-and-deploy:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: 1. Pull Latest Code
@@ -29,16 +27,6 @@ jobs:
           # Ensures drift remains at 0 before we go live
           node ./scripts/check-ledger-drift.js --expected 0
 
-      - name: 5. Setup & Deploy to GitHub Pages
-        if: success() # Only runs if steps 2, 3, and 4 pass perfectly
-        uses: actions/configure-pages@v4
-      
-      - name: Upload Build Artifacts
+      - name: 5. Ecosystem Verified
         if: success()
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-      - name: Finalize Deployment
-        if: success()
-        uses: actions/deploy-pages@v4
+        run: echo "All gates passed — audit clean, build verified, ledger drift zero."
