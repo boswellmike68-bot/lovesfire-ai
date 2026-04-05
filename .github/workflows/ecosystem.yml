@@ -1,0 +1,44 @@
+name: Master Ecosystem Pipeline
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allows you to run this manually if needed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Pull Latest Code
+        uses: actions/checkout@v4
+
+      - name: 2. Security Audit
+        run: npm audit --audit-level=high
+
+      - name: 3. Install & Verify Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: 4. Ledger Integrity Check
+        run: |
+          # Ensures drift remains at 0 before we go live
+          node ./scripts/check-ledger-drift.js --expected 0
+
+      - name: 5. Setup & Deploy to GitHub Pages
+        if: success() # Only runs if steps 2, 3, and 4 pass perfectly
+        uses: actions/configure-pages@v4
+      
+      - name: Upload Build Artifacts
+        if: success()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Finalize Deployment
+        if: success()
+        uses: actions/deploy-pages@v4
